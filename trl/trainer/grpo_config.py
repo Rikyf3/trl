@@ -265,6 +265,12 @@ class GRPOConfig(TrainingArguments):
             "synchronized with the reference policy. To use this parameter, you must set `sync_ref_model=True`."
         },
     )
+    use_hv_mode: bool = field(
+        default=False,
+        metadata={
+            "help": "Whether to add a multiplication term to the advantage to increase likelyhood of longer or shorter chains"
+        },
+    )
 
     # Parameters that control the logging
     log_completions: bool = field(

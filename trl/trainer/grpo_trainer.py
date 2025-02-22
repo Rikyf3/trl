@@ -814,6 +814,16 @@ class GRPOTrainer(Trainer):
         std_grouped_rewards = std_grouped_rewards.repeat_interleave(self.num_generations, dim=0)
         advantages = (rewards - mean_grouped_rewards) / (std_grouped_rewards + 1e-4)
 
+        if self.args.use_hv_mode:
+            lengths = completion_mask.sum(1).float()
+            mean_grouped_lengths = lengths.view(-1, self.num_generations).mean(dim=1)
+            std_grouped_lengths = lengths.view(-1, self.num_generations).std(dim=1)
+
+            mean_grouped_lengths = mean_grouped_lengths.repeat_interleave(self.num_generations, dim=0)
+            std_grouped_lengths = std_grouped_lengths.repeat_interleave(self.num_generations, dim=0)
+
+            advantages = 0.25 * torch.abs((lengths - mean_grouped_lengths) / (std_grouped_lengths + 1e-4)) * advantages + advantages
+
         # Slice to keep only the local part of the data
         process_slice = slice(
             self.accelerator.process_index * len(prompts),
@@ -825,7 +835,9 @@ class GRPOTrainer(Trainer):
         mode = "eval" if self.control.should_evaluate else "train"
 
         completion_length = self.accelerator.gather_for_metrics(completion_mask.sum(1)).float().mean().item()
+        completion_length_std = self.accelerator.gather_for_metrics(completion_mask.sum(1)).float().std().item()
         self._metrics[mode]["completion_length"].append(completion_length)
+        self._metrics[mode]["completion_length_std"].append(completion_length_std)
 
         reward_per_func = rewards_per_func.mean(0)
         for i, reward_func in enumerate(self.reward_funcs):
