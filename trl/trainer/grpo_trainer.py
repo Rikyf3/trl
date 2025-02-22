@@ -815,8 +815,8 @@ class GRPOTrainer(Trainer):
         advantages = (rewards - mean_grouped_rewards) / (std_grouped_rewards + 1e-4)
 
         if self.args.use_hv_mode:
-            all_completion_mask = self.accelerator.gather_for_metrics(completion_mask)
-            lengths = all_completion_mask.sum(1).float()
+            completion_mask = gather(completion_mask)
+            lengths = completion_mask.sum(1).float()
             mean_grouped_lengths = lengths.view(-1, self.num_generations).mean(dim=1)
             std_grouped_lengths = lengths.view(-1, self.num_generations).std(dim=1)
 
